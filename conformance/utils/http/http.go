@@ -357,8 +357,8 @@ func CompareRoundTrip(t *testing.T, req *roundtripper.Request, cReq *roundtrippe
 			return fmt.Errorf("expected pod name to start with %s, got %s", expected.Backend, cReq.Pod)
 		}
 
-		if expected.ExpectedRequest.SNI != cReq.SNI {
-			return fmt.Errorf("expected SNI %q to be equal to %q", cReq.SNI, expected.ExpectedRequest.SNI)
+		if expected.ExpectedRequest.SNI != cReq.TLS.ServerName {
+			return fmt.Errorf("expected SNI %q to be equal to %q", cReq.TLS.ServerName, expected.ExpectedRequest.SNI)
 		}
 	} else if roundtripper.IsRedirect(cRes.StatusCode) {
 		if expected.RedirectRequest == nil {

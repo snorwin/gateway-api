@@ -21,10 +21,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	h "sigs.k8s.io/gateway-api/conformance/utils/http"
+	"sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
 	"sigs.k8s.io/gateway-api/conformance/utils/suite"
-	"sigs.k8s.io/gateway-api/conformance/utils/tls"
 	"sigs.k8s.io/gateway-api/pkg/features"
 )
 
@@ -43,46 +42,25 @@ var BackendTLSPolicy = suite.ConformanceTest{
 	Manifests: []string{"tests/backendtlspolicy.yaml"},
 	Test: func(t *testing.T, suite *suite.ConformanceTestSuite) {
 		ns := "gateway-conformance-infra"
-		routeNN := types.NamespacedName{Name: "gateway-conformance-infra-test", Namespace: ns}
-		gwNN := types.NamespacedName{Name: "gateway-backendtlspolicy", Namespace: ns}
-
-		kubernetes.NamespacesMustBeReady(t, suite.Client, suite.TimeoutConfig, []string{ns})
+		routeNN := types.NamespacedName{Name: "backend-tls", Namespace: ns}
+		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: ns}
 		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
 		kubernetes.HTTPRouteMustHaveResolvedRefsConditionsTrue(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN)
 
-		serverStr := "abc.example.com"
-
-		// Verify that the response to a call to /backendTLS will return the matching SNI.
-		certNN := types.NamespacedName{Name: "tls-checks-certificate", Namespace: ns}
-		cPem, keyPem, err := GetTLSSecret(suite.Client, certNN)
-		if err != nil {
-			t.Fatalf("unexpected error finding TLS secret: %v", err)
+		testCases := []http.ExpectedResponse{
+			{
+				Request:   http.Request{Path: "/backend-tls", SNI: "abc.example.com"},
+				Response:  http.Response{StatusCode: 200},
+				Namespace: ns,
+			},
 		}
-		t.Run("Simple request targeting BackendTLSPolicy should reach infra-backend", func(t *testing.T) {
-			tls.MakeTLSRequestAndExpectEventuallyConsistentResponse(t, suite.RoundTripper, suite.TimeoutConfig, gwAddr, cPem, keyPem, serverStr,
-				h.ExpectedResponse{
-					Namespace: ns,
-					Request: h.Request{
-						Host: serverStr,
-						Path: "/backendTLS",
-						SNI:  serverStr,
-					},
-					Response: h.Response{StatusCode: 200},
-				})
-		})
 
-		// Verify that expecting the wrong SNI will fail.
-		t.Run("Simple request targeting BackendTLSPolicy and expecting the wrong SNI should fail", func(t *testing.T) {
-			tls.MakeTLSRequestAndExpectFailure(t, suite.RoundTripper, gwAddr, cPem, keyPem, serverStr,
-				h.ExpectedResponse{
-					Namespace: ns,
-					Request: h.Request{
-						Host: serverStr,
-						Path: "/backendTLS",
-						SNI:  "notright",
-					},
-					Response: h.Response{StatusCode: 200},
-				})
-		})
+		for i := range testCases {
+			tc := testCases[i]
+			t.Run(tc.GetTestCaseName(i), func(t *testing.T) {
+				t.Parallel()
+				http.MakeRequestAndExpectEventuallyConsistentResponse(t, suite.RoundTripper, suite.TimeoutConfig, gwAddr, tc)
+			})
+		}
 	},
 }
