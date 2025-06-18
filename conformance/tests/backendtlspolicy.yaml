@@ -22,7 +22,7 @@ metadata:
   namespace: gateway-conformance-infra
 spec:
   parentRefs:
-    - name: same-namespace
+    - name: same-namespace-with-https-listener
   rules:
     - backendRefs:
       - name: tls-backend

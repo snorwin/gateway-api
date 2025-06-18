@@ -17,6 +17,7 @@ limitations under the License.
 package tests
 
 import (
+	"sigs.k8s.io/gateway-api/conformance/utils/tls"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -43,9 +44,15 @@ var BackendTLSPolicy = suite.ConformanceTest{
 	Test: func(t *testing.T, suite *suite.ConformanceTestSuite) {
 		ns := "gateway-conformance-infra"
 		routeNN := types.NamespacedName{Name: "backend-tls", Namespace: ns}
-		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: ns}
+		gwNN := types.NamespacedName{Name: "same-namespace-with-https-listener", Namespace: ns}
 		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
 		kubernetes.HTTPRouteMustHaveResolvedRefsConditionsTrue(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN)
+
+		certNN := types.NamespacedName{Name: "tls-validity-checks-certificate", Namespace: ns}
+		cPem, keyPem, err := GetTLSSecret(suite.Client, certNN)
+		if err != nil {
+			t.Fatalf("unexpected error finding TLS secret: %v", err)
+		}
 
 		testCases := []http.ExpectedResponse{
 			{
@@ -59,7 +66,7 @@ var BackendTLSPolicy = suite.ConformanceTest{
 			tc := testCases[i]
 			t.Run(tc.GetTestCaseName(i), func(t *testing.T) {
 				t.Parallel()
-				http.MakeRequestAndExpectEventuallyConsistentResponse(t, suite.RoundTripper, suite.TimeoutConfig, gwAddr, tc)
+				tls.MakeTLSRequestAndExpectEventuallyConsistentResponse(t, suite.RoundTripper, suite.TimeoutConfig, gwAddr, cPem, keyPem, "example.org", tc)
 			})
 		}
 	},
