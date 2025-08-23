@@ -178,8 +178,6 @@ func MustCreateCACertConfigMap(t *testing.T, namespace, configMapName string) (*
 		},
 		Data: map[string]string{
 			"ca.crt": certData.String(),
-			// Don't do this in production, this is just for conformance testing.
-			"key.crt": keyData.String(),
 		},
 	}
 	return caConfigMap, ca, caPrivKey
