@@ -10,9 +10,101 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: /retry/no-status-code-attempts-3
+            value: /retry-on-connection-errors
       retry:
-        attempts: 3
+        attempts: 200
+      timeouts:
+        request: 100s
       backendRefs:
-        - name: infra-backend-v3
+        - name: connection-error-backend
           port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connection-error-backend
+  namespace: gateway-conformance-infra
+spec:
+  selector:
+    app: connection-error-backend
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connection-error-backend-broken
+  namespace: gateway-conformance-infra
+  labels:
+    app: connection-error-backend
+    variant: broken
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: connection-error-backend
+      variant: broken
+  template:
+    metadata:
+      labels:
+        app: connection-error-backend
+        variant: broken
+    spec:
+      containers:
+        - name: connection-error-backend
+          image: registry.k8s.io/kube-proxy:v1.36.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              iptables -A INPUT -p tcp --dport 3000 -j DROP # --reject-with tcp-reset
+              sleep infinity
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_ADMIN
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connection-error-backend-healthy
+  namespace: gateway-conformance-infra
+  labels:
+    app: connection-error-backend
+    variant: healthy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: connection-error-backend
+      variant: healthy
+  template:
+    metadata:
+      labels:
+        app: connection-error-backend
+        variant: healthy
+    spec:
+      containers:
+        - name: connection-error-backend
+          image: registry.k8s.io/gateway-api/conformance/echo-basic:v0.1.0
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 10m

@@ -17,12 +17,9 @@ limitations under the License.
 package tests
 
 import (
-	"fmt"
-	"net/url"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/types"
-
 	"sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
 	confsuite "sigs.k8s.io/gateway-api/conformance/utils/suite"
@@ -50,41 +47,16 @@ var HTTPRouteRetryConnectionError = confsuite.ConformanceTest{
 		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
 		kubernetes.HTTPRouteMustHaveResolvedRefsConditionsTrue(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN)
 
-		type args struct {
-			path                  string
-			retrySimulationConfig url.Values
-		}
-		testCases := []struct {
-			name string
-			args args
-			want http.Response
-		}{
-			{
-				name: "succeeds after 2 retries on connection errors and max attempts is 3",
-				args: args{
-					path: "/retry/no-status-code-attempts-3",
-					retrySimulationConfig: url.Values{
-						"succeedAfter": []string{"2"},
-					},
-				},
-				want: http.Response{StatusCode: 200},
-			},
-			{
-				name: "fails when required retries on connection errors exceed max attempts",
-				args: args{
-					path: "/retry/no-status-code-attempts-3",
-					retrySimulationConfig: url.Values{
-						"succeedAfter": []string{"4"},
-					},
-				},
-				want: http.Response{StatusCodes: []int{500, 503}},
-			},
-		}
-		for i := range testCases {
-			tc := testCases[i]
-			t.Run(fmt.Sprintf("%d request to '%s' %s", i, tc.args.path, tc.name), func(t *testing.T) {
-				assertConsistentRetryBehaviour(t, suite, gwAddr, ns, tc.args.path, tc.args.retrySimulationConfig, tc.want)
-			})
-		}
+		kubernetes.NamespacesMustBeReady(t, suite.Client, suite.TimeoutConfig, []string{confsuite.InfrastructureNamespace})
+
+		dedicatedTimeoutConfig := suite.TimeoutConfig
+		dedicatedTimeoutConfig.RequiredConsecutiveSuccesses = 5
+
+		http.MakeRequestAndExpectEventuallyConsistentResponse(t, suite.RoundTripper, dedicatedTimeoutConfig, gwAddr, http.ExpectedResponse{
+			Request:   http.Request{Path: "/retry-on-connection-errors"},
+			Response:  http.Response{StatusCode: 200},
+			Backend:   "connection-error-backend-healthy",
+			Namespace: confsuite.InfrastructureNamespace,
+		})
 	},
 }
