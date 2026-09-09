@@ -27,7 +27,7 @@ import (
 //
 // HTTPRouteSpec defines the desired state of HTTPRoute
 type HTTPRouteSpecApplyConfiguration struct {
-	CommonRouteSpecApplyConfiguration `json:",inline"`
+	CommonRouteSpecApplyConfiguration `json:""`
 	// Hostnames defines a set of hostnames that should match against the HTTP Host
 	// header to select a HTTPRoute used to process the request. Implementations
 	// MUST ignore any port value specified in the HTTP Host header while
@@ -81,6 +81,7 @@ type HTTPRouteSpecApplyConfiguration struct {
 	// HTTPRouteMatches takes over.
 	//
 	// Support: Core
+	//
 	Hostnames []apisv1.Hostname `json:"hostnames,omitempty"`
 	// Rules are a list of HTTP matchers, filters and actions.
 	//

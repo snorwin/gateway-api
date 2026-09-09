@@ -27,7 +27,7 @@ import (
 //
 // GRPCRouteSpec defines the desired state of GRPCRoute
 type GRPCRouteSpecApplyConfiguration struct {
-	CommonRouteSpecApplyConfiguration `json:",inline"`
+	CommonRouteSpecApplyConfiguration `json:""`
 	// Hostnames defines a set of hostnames to match against the GRPC
 	// Host header to select a GRPCRoute to process the request. This matches
 	// the RFC 1123 definition of a hostname with 2 notable exceptions:
@@ -78,6 +78,7 @@ type GRPCRouteSpecApplyConfiguration struct {
 	// 'False' in the corresponding RouteParentStatus.
 	//
 	// Support: Core
+	//
 	Hostnames []apisv1.Hostname `json:"hostnames,omitempty"`
 	// Rules are a list of GRPC matchers, filters and actions.
 	//

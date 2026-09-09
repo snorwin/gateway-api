@@ -30,7 +30,7 @@ import (
 // Core: The listener CAN be of type Passthrough
 // Extended: The listener CAN be of type Terminate
 type TLSRouteSpecApplyConfiguration struct {
-	CommonRouteSpecApplyConfiguration `json:",inline"`
+	CommonRouteSpecApplyConfiguration `json:""`
 	// Hostnames defines a set of SNI hostnames that should match against the
 	// SNI attribute of TLS ClientHello message in TLS handshake. This matches
 	// the RFC 1123 definition of a hostname with 2 notable exceptions:
@@ -74,8 +74,10 @@ type TLSRouteSpecApplyConfiguration struct {
 	// Core: Listener with `protocol` `TLS` and `tls.mode` `Passthrough`.
 	// Extended: Listener with `protocol` `TLS` and `tls.mode` `Terminate`. The feature name for this Extended feature is `TLSRouteTermination`.
 	// </gateway:util:excludeFromCRD>
+	//
 	Hostnames []apisv1.Hostname `json:"hostnames,omitempty"`
 	// Rules are a list of actions.
+	//
 	Rules []TLSRouteRuleApplyConfiguration `json:"rules,omitempty"`
 }
 
