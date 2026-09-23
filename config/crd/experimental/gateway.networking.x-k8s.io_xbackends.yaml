@@ -153,7 +153,7 @@ spec:
 
                   Support: Core - HTTP, HTTP2, H2C, and HTTP11
 
-                  Support: Extended - GRPC, MCP, TCP
+                  Support: Extended - GRPC, MCP, TCP, WSS
                 enum:
                 - TCP
                 - HTTP
@@ -162,6 +162,7 @@ spec:
                 - H2C
                 - MCP
                 - GRPC
+                - WSS
                 type: string
               tls:
                 description: |-
@@ -464,6 +465,8 @@ spec:
             - message: tls must be set when protocol is HTTP2, use protocol H2C for
                 HTTP/2 without tls
               rule: self.protocol != 'HTTP2' || has(self.tls)
+            - message: tls must be set when protocol is WSS
+              rule: self.protocol != 'WSS' || has(self.tls)
           status:
             description: Status defines the current state of XBackend.
             properties:
