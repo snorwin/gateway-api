@@ -29,36 +29,63 @@ import (
 	xgatewayv1alpha1 "sigs.k8s.io/gateway-api/apisx/v1alpha1"
 )
 
-func TestXBackendBa(t *testing.T) {
+func TestXBackendSpec(t *testing.T) {
 	tests := []struct {
 		name       string
+		spec       xgatewayv1alpha1.BackendSpec
 		wantErrors []string
-		portName   *string
 	}{
 		{
-			name:       "no port name",
-			portName:   nil,
+			name: "protocol H2C without tls",
+			spec: xgatewayv1alpha1.BackendSpec{
+				Type: xgatewayv1alpha1.BackendTypeExternalHostname,
+				Port: xgatewayv1alpha1.BackendPort{Port: 8080},
+				ExternalHostname: &xgatewayv1alpha1.ExternalHostnameBackend{
+					Hostname: "example.com",
+				},
+				Protocol: new(xgatewayv1alpha1.BackendProtocolH2C),
+				TLS:      nil,
+			},
 			wantErrors: []string{},
 		},
 		{
-			name:       "empty port name",
-			portName:   new(""),
+			name: "protocol H2C with tls",
+			spec: xgatewayv1alpha1.BackendSpec{
+				Type: xgatewayv1alpha1.BackendTypeExternalHostname,
+				Port: xgatewayv1alpha1.BackendPort{Port: 8080},
+				ExternalHostname: &xgatewayv1alpha1.ExternalHostnameBackend{
+					Hostname: "example.com",
+				},
+				Protocol: new(xgatewayv1alpha1.BackendProtocolH2C),
+				TLS:      &xgatewayv1alpha1.BackendTLS{Mode: xgatewayv1alpha1.BackendTLSModeNone},
+			},
+			wantErrors: []string{"tls must be unset when protocol is H2C, use protocol HTTP2 for HTTP/2 with tls"},
+		},
+		{
+			name: "protocol HTTP2 without tls",
+			spec: xgatewayv1alpha1.BackendSpec{
+				Type: xgatewayv1alpha1.BackendTypeExternalHostname,
+				Port: xgatewayv1alpha1.BackendPort{Port: 8080},
+				ExternalHostname: &xgatewayv1alpha1.ExternalHostnameBackend{
+					Hostname: "example.com",
+				},
+				Protocol: new(xgatewayv1alpha1.BackendProtocolHTTP2),
+				TLS:      nil,
+			},
+			wantErrors: []string{"tls must be set when protocol is HTTP2, use protocol H2C for HTTP/2 without tls"},
+		},
+		{
+			name: "protocol HTTP2 with tls",
+			spec: xgatewayv1alpha1.BackendSpec{
+				Type: xgatewayv1alpha1.BackendTypeExternalHostname,
+				Port: xgatewayv1alpha1.BackendPort{Port: 8080},
+				ExternalHostname: &xgatewayv1alpha1.ExternalHostnameBackend{
+					Hostname: "example.com",
+				},
+				Protocol: new(xgatewayv1alpha1.BackendProtocolHTTP2),
+				TLS:      &xgatewayv1alpha1.BackendTLS{Mode: xgatewayv1alpha1.BackendTLSModeNone},
+			},
 			wantErrors: []string{},
-		},
-		{
-			name:       "simple lowercase port name",
-			portName:   new("http"),
-			wantErrors: []string{},
-		},
-		{
-			name:       "port name with whitespace is rejected",
-			portName:   new("my port"),
-			wantErrors: []string{"Name must be a valid DNS label"},
-		},
-		{
-			name:       "port name with uppercase characters are rejected",
-			portName:   new("HTTP"),
-			wantErrors: []string{"Name must be a valid DNS label"},
 		},
 	}
 	for _, tc := range tests {
@@ -68,16 +95,7 @@ func TestXBackendBa(t *testing.T) {
 					Name:      fmt.Sprintf("foo-%v", time.Now().UnixNano()),
 					Namespace: metav1.NamespaceDefault,
 				},
-				Spec: xgatewayv1alpha1.BackendSpec{
-					Type: xgatewayv1alpha1.BackendTypeExternalHostname,
-					ExternalHostname: &xgatewayv1alpha1.ExternalHostnameBackend{
-						Hostname: "example.com",
-					},
-					Port: xgatewayv1alpha1.BackendPort{
-						Name: tc.portName,
-						Port: 80,
-					},
-				},
+				Spec: tc.spec,
 			}
 			validateXBackend(t, backend, tc.wantErrors)
 		})
