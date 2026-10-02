@@ -1,4 +1,8 @@
 version: 2
+registries:
+  k8s-registry:
+    type: docker-registry
+    url: https://registry.k8s.io
 multi-ecosystem-groups:
   gateway-api-conformance-images:
     schedule:
